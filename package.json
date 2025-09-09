@@ -1,0 +1,25 @@
+{
+  "name": "student-result-mysql",
+  "version": "1.0.0",
+  "description": "A full-stack Student Result app. Backend uses **Node.js/Express + MySQL** (username=`root`, password=`root`). Frontend is vanilla JS with Tailwind and jsPDF.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ajithkumar31082004-bit/z2a.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ajithkumar31082004-bit/z2a/issues"
+  },
+  "homepage": "https://github.com/ajithkumar31082004-bit/z2a#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "mysql2": "^3.14.5"
+  }
+}
