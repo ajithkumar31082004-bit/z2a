@@ -1,0 +1,18 @@
+{
+  "name": "student-result-mysql",
+  "version": "1.0.0",
+  "description": "Full-stack Student Result app using Node.js/Express and MySQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.9.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

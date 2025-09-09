@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Portal - Student Result App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+<header class="bg-white shadow sticky top-0 z-10">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <h1 class="text-2xl font-bold">Admin Portal</h1>
+    <nav class="space-x-4">
+      <a href="index.html" class="text-indigo-600 hover:underline">Student Login</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto p-4">
+  <!-- Login Card -->
+  <section id="loginCard" class="bg-white rounded-2xl shadow p-6 mt-6">
+    <h2 class="text-xl font-semibold mb-4">Admin Login</h2>
+    <form id="adminLoginForm" class="grid md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Username</label>
+        <input id="adminUser" class="w-full border rounded-xl px-3 py-2" required value="Z2A" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Password</label>
+        <input id="adminPass" type="password" class="w-full border rounded-xl px-3 py-2" required value="1234" />
+      </div>
+      <div class="flex items-end">
+        <button class="w-full bg-indigo-600 text-white rounded-xl px-4 py-2 hover:bg-indigo-700">Login</button>
+      </div>
+    </form>
+    <p id="adminLoginError" class="text-red-600 mt-3 hidden"></p>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="dashboard" class="hidden">
+    <div class="grid lg:grid-cols-2 gap-6 mt-6">
+      <!-- Add Student Form -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <h2 class="text-xl font-semibold mb-4">Add Student</h2>
+        <form id="addStudentForm" class="space-y-4">
+          <div class="grid md:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Name</label>
+              <input id="name" class="w-full border rounded-xl px-3 py-2" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Roll No</label>
+              <input id="roll" class="w-full border rounded-xl px-3 py-2" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">DOB</label>
+              <input id="dob" type="date" class="w-full border rounded-xl px-3 py-2" required />
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold">Subjects (1–10)</h3>
+              <button type="button" id="addSubject" class="bg-gray-800 text-white rounded-xl px-3 py-1 hover:bg-black">Add Subject Row</button>
+            </div>
+            <div id="subjects" class="space-y-2"></div>
+            <template id="subjectRowTpl">
+              <div class="grid grid-cols-12 gap-2 items-center">
+                <input placeholder="Subject Name" class="col-span-5 border rounded-xl px-3 py-2 subject-name" required />
+                <input type="number" min="0" max="100" placeholder="Marks" class="col-span-3 border rounded-xl px-3 py-2 subject-marks" required />
+                <label class="col-span-3 inline-flex items-center space-x-2">
+                  <input type="checkbox" class="subject-pass">
+                  <span>Pass</span>
+                </label>
+                <button type="button" class="col-span-1 text-red-600 remove-row">&times;</button>
+              </div>
+            </template>
+          </div>
+
+          <div class="grid md:grid-cols-3 gap-4">
+            <div class="bg-gray-50 rounded-xl p-3 border"><span class="font-medium">Total Marks:</span> <span id="total">0</span></div>
+            <div class="bg-gray-50 rounded-xl p-3 border"><span class="font-medium">Percentage:</span> <span id="percentage">0</span>%</div>
+            <div class="bg-gray-50 rounded-xl p-3 border"><span class="font-medium">Grade:</span> <span id="grade">F</span></div>
+          </div>
+
+          <button class="bg-emerald-600 text-white rounded-xl px-4 py-2 hover:bg-emerald-700">Save Student</button>
+          <p id="formError" class="text-red-600 mt-2 hidden"></p>
+          <p id="formSuccess" class="text-emerald-700 mt-2 hidden"></p>
+        </form>
+      </div>
+
+      <!-- Students Table -->
+      <div class="bg-white rounded-2xl shadow p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">All Students</h2>
+          <button id="refreshTable" class="bg-gray-200 rounded-xl px-3 py-1 hover:bg-gray-300">Refresh</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full border">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="px-3 py-2 border">Roll</th>
+                <th class="px-3 py-2 border">Name</th>
+                <th class="px-3 py-2 border">Total</th>
+                <th class="px-3 py-2 border">Grade</th>
+                <th class="px-3 py-2 border">Overall</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const API_BASE = 'http://localhost:5000';
+  let ADMIN_TOKEN = null;
+
+  // Admin login
+  document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('adminUser').value.trim();
+    const password = document.getElementById('adminPass').value;
+
+    const err = document.getElementById('adminLoginError');
+    err.classList.add('hidden'); err.textContent = '';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      if (!res.ok) throw new Error('Invalid credentials');
+      const { token } = await res.json();
+      ADMIN_TOKEN = token;
+      document.getElementById('loginCard').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      ensureOneRow();
+      loadStudents();
+    } catch (e) {
+      err.textContent = e.message || 'Login failed';
+      err.classList.remove('hidden');
+    }
+  });
+
+  // Subject rows logic
+  const subjectsDiv = document.getElementById('subjects');
+  const tpl = document.getElementById('subjectRowTpl');
+
+  function addRow() {
+    if (subjectsDiv.children.length >= 10) return alert('Maximum 10 subjects');
+    const node = tpl.content.cloneNode(true);
+    node.querySelector('.remove-row').addEventListener('click', (ev) => {
+      ev.target.closest('.grid').remove();
+      recalc();
+    });
+    node.querySelector('.subject-marks').addEventListener('input', recalc);
+    node.querySelector('.subject-pass').addEventListener('change', recalc);
+    subjectsDiv.appendChild(node);
+    recalc();
+  }
+
+  function ensureOneRow() {
+    if (subjectsDiv.children.length === 0) addRow();
+  }
+
+  document.getElementById('addSubject').addEventListener('click', addRow);
+
+  function recalc() {
+    const rows = subjectsDiv.querySelectorAll('.grid');
+    let total = 0;
+    let count = 0;
+    rows.forEach(r => {
+      const marks = Number(r.querySelector('.subject-marks').value || 0);
+      if (!isNaN(marks)) {
+        total += marks;
+        count += 1;
+      }
+    });
+    const percentage = count ? (total / count) : 0;
+    document.getElementById('total').textContent = total;
+    document.getElementById('percentage').textContent = percentage.toFixed(2);
+    document.getElementById('grade').textContent = computeGrade(percentage);
+  }
+
+  function computeGrade(p) {
+    if (p >= 75) return 'A';
+    if (p >= 60) return 'B';
+    if (p >= 50) return 'C';
+    if (p >= 40) return 'D';
+    return 'F';
+  }
+
+  // Add student form submit
+  document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const roll = document.getElementById('roll').value.trim();
+    const dob = document.getElementById('dob').value;
+
+    const rows = subjectsDiv.querySelectorAll('.grid');
+    if (rows.length < 1 || rows.length > 10) {
+      return showFormError('Please add between 1 and 10 subjects.');
+    }
+
+    const subjects = [];
+    for (const r of rows) {
+      const subject_name = r.querySelector('.subject-name').value.trim();
+      const marks = Number(r.querySelector('.subject-marks').value);
+      const pass = r.querySelector('.subject-pass').checked;
+      if (!subject_name || isNaN(marks)) {
+        return showFormError('Please fill all subject rows with valid values.');
+      }
+      if (marks < 0 || marks > 100) {
+        return showFormError('Marks must be 0-100.');
+      }
+      subjects.push({ subject_name, marks, pass });
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ADMIN_TOKEN}`
+        },
+        body: JSON.stringify({ name, roll, dob, subjects })
+      });
+      if (!res.ok) {
+        const msg = await res.json().catch(()=>({error: 'Failed to save'}));
+        throw new Error(msg.error || 'Failed to save');
+      }
+      showFormSuccess('Student saved successfully!');
+      // reset form
+      document.getElementById('addStudentForm').reset();
+      subjectsDiv.innerHTML = '';
+      ensureOneRow();
+      recalc();
+      loadStudents();
+    } catch (e) {
+      showFormError(e.message || 'Failed to save');
+    }
+  });
+
+  function showFormError(msg) {
+    const el = document.getElementById('formError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    document.getElementById('formSuccess').classList.add('hidden');
+  }
+  function showFormSuccess(msg) {
+    const el = document.getElementById('formSuccess');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    document.getElementById('formError').classList.add('hidden');
+  }
+
+  // Load students into table
+  async function loadStudents() {
+    const tbody = document.getElementById('studentsTbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-2 border text-center">Loading...</td></tr>';
+    try {
+      const res = await fetch(`${API_BASE}/api/students`);
+      const data = await res.json();
+      tbody.innerHTML = '';
+      if (!Array.isArray(data) || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-2 border text-center text-gray-500">No students yet</td></tr>';
+        return;
+      }
+      for (const s of data) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="px-3 py-2 border">${s.roll}</td>
+          <td class="px-3 py-2 border">${s.name}</td>
+          <td class="px-3 py-2 border text-center">${s.total_marks}</td>
+          <td class="px-3 py-2 border text-center">${s.grade}</td>
+          <td class="px-3 py-2 border text-center">${s.overall_pass ? 'Pass' : 'Fail'}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="5" class="px-3 py-2 border text-center text-red-600">Failed to load students</td></tr>';
+    }
+  }
+
+  document.getElementById('refreshTable').addEventListener('click', loadStudents);
+</script>
+</body>
+</html>

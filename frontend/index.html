@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Portal - Results</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="min-h-screen bg-gray-50">
+  <header class="bg-white shadow sticky top-0 z-10">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <h1 class="text-2xl font-bold">Student Result Portal</h1>
+      <nav class="space-x-4">
+        <a href="admin.html" class="text-indigo-600 hover:underline">Admin Login</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto p-4">
+    <section class="bg-white rounded-2xl shadow p-6 mt-6">
+      <h2 class="text-xl font-semibold mb-4">Login</h2>
+      <form id="studentLoginForm" class="grid md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Roll No</label>
+          <input id="roll" class="w-full border rounded-xl px-3 py-2" required />
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Date of Birth</label>
+          <input id="dob" type="date" class="w-full border rounded-xl px-3 py-2" required />
+        </div>
+        <div class="flex items-end">
+          <button class="w-full bg-indigo-600 text-white rounded-xl px-4 py-2 hover:bg-indigo-700">View Result</button>
+        </div>
+      </form>
+      <p id="studentError" class="text-red-600 mt-3 hidden"></p>
+    </section>
+
+    <section id="resultCard" class="bg-white rounded-2xl shadow p-6 mt-6 hidden">
+      <div id="printArea">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-2xl font-bold">Result Card</h3>
+            <p class="text-gray-500">Student Result App</p>
+          </div>
+          <div class="text-right">
+            <p class="text-sm text-gray-500">http://localhost:5000</p>
+            <p class="text-sm text-gray-500" id="printDate"></p>
+          </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4 mb-4">
+          <div><span class="font-medium">Name:</span> <span id="sName"></span></div>
+          <div><span class="font-medium">Roll No:</span> <span id="sRoll"></span></div>
+          <div><span class="font-medium">DOB:</span> <span id="sDob"></span></div>
+          <div><span class="font-medium">Grade:</span> <span id="sGrade"></span></div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full border">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="px-4 py-2 border">#</th>
+                <th class="px-4 py-2 border">Subject</th>
+                <th class="px-4 py-2 border">Marks</th>
+                <th class="px-4 py-2 border">Pass/Fail</th>
+              </tr>
+            </thead>
+            <tbody id="subjectsTable"></tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 grid md:grid-cols-3 gap-4">
+          <div class="bg-gray-50 rounded-xl p-3 border"><span class="font-medium">Total Marks:</span> <span id="sTotal"></span></div>
+          <div class="bg-gray-50 rounded-xl p-3 border"><span class="font-medium">Percentage:</span> <span id="sPercentage"></span>%</div>
+          <div class="bg-gray-50 rounded-xl p-3 border"><span class="font-medium">Overall:</span> <span id="sOverall"></span></div>
+        </div>
+      </div>
+
+      <button id="downloadPdf" class="mt-6 bg-emerald-600 text-white rounded-xl px-4 py-2 hover:bg-emerald-700">Download PDF</button>
+    </section>
+  </main>
+
+<script>
+  const API_BASE = 'http://localhost:5000';
+
+  // student login logic (unchanged)
+  document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const roll = document.getElementById('roll').value.trim();
+    const dob = document.getElementById('dob').value;
+
+    const err = document.getElementById('studentError');
+    err.classList.add('hidden');
+    err.textContent = '';
+
+    if (!roll || !dob) {
+      err.textContent = 'Please enter both Roll No and DOB.';
+      err.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/students/${encodeURIComponent(roll)}/${encodeURIComponent(dob)}`);
+      if (!res.ok) throw new Error('Student not found');
+      const data = await res.json();
+      renderResult(data);
+    } catch (e) {
+      err.textContent = e.message || 'Failed to fetch result';
+      err.classList.remove('hidden');
+    }
+  });
+
+  function renderResult(data) {
+    document.getElementById('resultCard').classList.remove('hidden');
+    document.getElementById('sName').textContent = data.name;
+    document.getElementById('sRoll').textContent = data.roll;
+    document.getElementById('sDob').textContent = data.dob?.substring(0, 10);
+    document.getElementById('sGrade').textContent = data.grade;
+    document.getElementById('sTotal').textContent = data.total_marks;
+    document.getElementById('sPercentage').textContent = data.percentage;
+    document.getElementById('sOverall').textContent = data.overall_pass ? 'Pass' : 'Fail';
+    document.getElementById('printDate').textContent = new Date().toLocaleString();
+
+    const tbody = document.getElementById('subjectsTable');
+    tbody.innerHTML = '';
+    data.subjects.forEach((s, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="px-4 py-2 border text-center">${idx + 1}</td>
+        <td class="px-4 py-2 border">${s.subject_name}</td>
+        <td class="px-4 py-2 border text-center">${s.marks}</td>
+        <td class="px-4 py-2 border text-center">${s.pass ? 'Pass' : 'Fail'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // PDF download logic (fixed)
+  document.getElementById('downloadPdf').addEventListener('click', async () => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF("p", "pt", "a4");
+
+    const content = document.getElementById("printArea");
+    const canvas = await html2canvas(content, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+
+    const imgWidth = 550; 
+    const pageHeight = doc.internal.pageSize.height;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 20;
+
+    doc.addImage(imgData, "PNG", 20, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+      position = heightLeft - imgHeight + 40;
+      doc.addPage();
+      doc.addImage(imgData, "PNG", 20, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+    }
+
+    doc.save("result.pdf");
+  });
+</script>
+</body>
+</html>
+
